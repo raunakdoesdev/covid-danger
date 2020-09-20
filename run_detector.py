@@ -91,7 +91,7 @@ def predict(img_data, env):
         st.markdown(f'## **{100*len(good)/(len(good)+len(bad)):.2f}%** of Individuals are Masked')
 
 
-        st.markdown(f'## COVID Danger Score is **{round(10*len(bad)/(len(good)+len(bad))) + (1 if env == "Outdoor" else 0)}**')
+        st.markdown(f'## COVID Danger Score is **{round(10*len(bad)/(len(good)+len(bad))) + (1 if env == "Indoor" else 0)}**')
         import plotly.express as px
         fig = px.bar(x=['Mask', 'No Mask'], y=[len(good), len(bad)],
                      labels={'x': 'Mask Status', 'y': '# of Detected Faces'}, title='Summary of Detections')
@@ -147,9 +147,10 @@ def matching(masks, faces, threshold=0.5):
     matches = []
     for mask in copy.deepcopy(masks):
         intersection = [overlap(mask, face) for face in faces]
-        best_match = np.argsort(intersection)[-1]
-        if intersection[best_match] > threshold * mask[2] * mask[3]:
-            matches.append(faces.pop(best_match))
+        if len(intersection) > 0:
+            best_match = np.argsort(intersection)[-1]
+            if intersection[best_match] > threshold * mask[2] * mask[3]:
+                matches.append(faces.pop(best_match))
     return faces, matches
 
 
