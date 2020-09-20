@@ -75,7 +75,7 @@ def run_model(img_data):
     return pil_img, img, mask_pred, face_pred
 
 
-def predict(img_data):
+def predict(img_data, env):
     pil_img, img, mask_pred, face_pred = run_model(img_data)
 
     with st.spinner('Processing Results...'):
@@ -89,7 +89,9 @@ def predict(img_data):
         ax.axis('off')
         st.pyplot()
         st.markdown(f'## **{100*len(good)/(len(good)+len(bad)):.2f}%** of Individuals are Masked')
-        st.markdown(f'## COVID Danger Score is **{round(10*len(good)/(len(good)+len(bad)))}**')
+
+
+        st.markdown(f'## COVID Danger Score is **{round(10*len(bad)/(len(good)+len(bad))) + (1 if env == "Outdoor" else 0)}**')
         import plotly.express as px
         fig = px.bar(x=['Mask', 'No Mask'], y=[len(good), len(bad)],
                      labels={'x': 'Mask Status', 'y': '# of Detected Faces'}, title='Summary of Detections')

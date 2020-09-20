@@ -16,11 +16,12 @@ if selection == 'Instructions':
     st.markdown(read_md_file('instructions.md'))
 
 if selection == 'Upload':
+    env = st.radio('Environment Type:', ['Indoor', 'Outdoor'])
     file = st.file_uploader('Upload an Image:')
+
     if file is not None:
         from run_detector import predict
-
-        predict(file)
+        predict(file, env)
 
 if selection == 'View':
     st.warning(
