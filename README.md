@@ -1,6 +1,7 @@
 ![logo](data/logo-01.png)
 # Use your head and stop the spread!
 
+
 ## Project
 This project is our submission for HackMIT 2020.
 
@@ -17,3 +18,6 @@ Finally, the webapp for the project was created with a StreamLit backend.
 
 1. Upload a picture of a specific location in order to update the COVID Danger Scale application.
 2. View the aggregated statistics on a map of your area in the View menu.
+
+## Video Demo
+[![COVID DEMO](https://img.youtube.com/vi/p3TMY83KXPY/0.jpg)](https://www.youtube.com/watch?v=p3TMY83KXPY)
