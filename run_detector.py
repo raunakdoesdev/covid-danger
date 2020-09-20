@@ -48,11 +48,12 @@ def run_face_model(net, img):
     return faces
     # st.write(faces)
 
-
-def predict(img_data):
+@st.cache(allow_output_mutation=True, show_spinner=False)
+def run_model(img_data):
     with st.spinner('Loading AI model...'):
         mask_model = get_mask_model()
         face_model = get_face_model()
+
     with st.spinner('Running AI model...'):
         pil_img = Image.open(img_data)
         img = ToTensor()(pil_img).unsqueeze(0)
@@ -67,14 +68,27 @@ def predict(img_data):
             xmin, ymin, xmax, ymax = box
             new_mask_pred.append((xmin.item(), ymin.item(), (xmax - xmin).item(), (ymax - ymin).item()))
         mask_pred = new_mask_pred
+    return pil_img, img, mask_pred, face_pred
+
+
+def predict(img_data):
+
+    pil_img, img, mask_pred, face_pred = run_model(img_data)
 
     with st.spinner('Processing Results...'):
-        bad, good = matching(mask_pred, face_pred)
         img = img[0].cpu().data
         fig, ax = plt.subplots(1)
         ax.imshow(img.permute(1, 2, 0))
-        plot_faces_annotated(fig, ax, bad, color='r')
+        bad, good = matching(mask_pred, face_pred)
+        face_pred = bad
+        for f1 in range(len(face_pred)):
+            for f2 in range(f1 + 1, len(face_pred)):
+                dist = distance_between_faces(face_pred[f1], face_pred[f2])
+                if  dist < 3:
+                    plot_line_between_faces(fig, ax, face_pred[f1], face_pred[f2], text=f'{dist:.1f} m')
+
         plot_faces_annotated(fig, ax, good, color='g')
+        plot_faces_annotated(fig, ax, bad, color='r')
         ax.axis('off')
         st.pyplot()
 
@@ -82,11 +96,36 @@ def predict(img_data):
     st.balloons()
 
 
+def plot_line_between_faces(fig, ax, f1, f2, text=None, color='blue'):
+    x = [f1[0] + f1[2]/2, f2[0] + f2[2]/2]
+    y = [f1[1] + f1[3]/2, f2[1] + f2[3]/2]
+    ax.plot(x, y, c=color)
+
+    if text is not None:
+        ax.text(np.mean(x), np.mean(y), text)
+
+
 def area(a, b):  # returns None if rectangles don't intersect
     dx = min(a.xmax, b.xmax) - max(a.xmin, b.xmin)
     dy = min(a.ymax, b.ymax) - max(a.ymin, b.ymin)
     if (dx >= 0) and (dy >= 0):
         return dx * dy
+
+
+def distance_to_face(face):
+    focal_length = 200
+    avg_face_width = 150
+    avg_face_height = 0.65
+    return (focal_length * avg_face_width / face[2])/304.8
+
+
+def distance_between_faces(f1, f2):
+    deltax = abs(f1[0] - f2[0])
+    avg_face_width = 0.5
+    avg_face_width_pixels = (f1[2] + f2[2] / 2)
+    horizontal_distance = deltax * avg_face_width / avg_face_width_pixels
+    vertical_distance = abs(distance_to_face(f1) - distance_to_face(f2))
+    return (horizontal_distance ** 2 + vertical_distance ** 2) ** (0.5)
 
 
 def overlap(b1, b2):
@@ -99,6 +138,7 @@ def overlap(b1, b2):
 
 
 def matching(masks, faces, threshold=0.5):
+    faces = copy.deepcopy(faces)
     matches = []
     for mask in copy.deepcopy(masks):
         intersection = [overlap(mask, face) for face in faces]
