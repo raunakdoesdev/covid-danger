@@ -9,6 +9,8 @@ import matplotlib.patches as patches
 from yoloface import *
 import copy
 
+st.set_option('deprecation.showPyplotGlobalUse', False)
+
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 
@@ -48,6 +50,7 @@ def run_face_model(net, img):
     return faces
     # st.write(faces)
 
+
 @st.cache(allow_output_mutation=True, show_spinner=False)
 def run_model(img_data):
     with st.spinner('Loading AI model...'):
@@ -58,6 +61,7 @@ def run_model(img_data):
         pil_img = Image.open(img_data)
         img = ToTensor()(pil_img).unsqueeze(0)
         face_pred = run_face_model(face_model, pil_img)
+        face_pred = [face for face in face_pred if face[2] * face[3] > 300]
         mask_pred = mask_model(img)
 
         # filter out non-mask predictions
@@ -72,7 +76,6 @@ def run_model(img_data):
 
 
 def predict(img_data):
-
     pil_img, img, mask_pred, face_pred = run_model(img_data)
 
     with st.spinner('Processing Results...'):
@@ -80,25 +83,25 @@ def predict(img_data):
         fig, ax = plt.subplots(1)
         ax.imshow(img.permute(1, 2, 0))
         bad, good = matching(mask_pred, face_pred)
-        face_pred = bad
-        for f1 in range(len(face_pred)):
-            for f2 in range(f1 + 1, len(face_pred)):
-                dist = distance_between_faces(face_pred[f1], face_pred[f2])
-                if  dist < 3:
-                    plot_line_between_faces(fig, ax, face_pred[f1], face_pred[f2], text=f'{dist:.1f} m')
 
         plot_faces_annotated(fig, ax, good, color='g')
         plot_faces_annotated(fig, ax, bad, color='r')
         ax.axis('off')
         st.pyplot()
+        st.markdown(f'## **{100*len(good)/(len(good)+len(bad)):.2f}%** of Individuals are Masked')
+        st.markdown(f'## COVID Danger Score is **{round(10*len(good)/(len(good)+len(bad)))}**')
+        import plotly.express as px
+        fig = px.bar(x=['Mask', 'No Mask'], y=[len(good), len(bad)],
+                     labels={'x': 'Mask Status', 'y': '# of Detected Faces'}, title='Summary of Detections')
+        st.plotly_chart(fig)
 
     st.success('Your image has been processed!')
     st.balloons()
 
 
 def plot_line_between_faces(fig, ax, f1, f2, text=None, color='blue'):
-    x = [f1[0] + f1[2]/2, f2[0] + f2[2]/2]
-    y = [f1[1] + f1[3]/2, f2[1] + f2[3]/2]
+    x = [f1[0] + f1[2] / 2, f2[0] + f2[2] / 2]
+    y = [f1[1] + f1[3] / 2, f2[1] + f2[3] / 2]
     ax.plot(x, y, c=color)
 
     if text is not None:
@@ -116,7 +119,7 @@ def distance_to_face(face):
     focal_length = 200
     avg_face_width = 150
     avg_face_height = 0.65
-    return (focal_length * avg_face_width / face[2])/304.8
+    return (focal_length * avg_face_width / face[2]) / 304.8
 
 
 def distance_between_faces(f1, f2):
